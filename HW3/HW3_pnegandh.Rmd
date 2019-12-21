@@ -1,0 +1,100 @@
+---
+title: "HW3_pnegandh"
+output:
+  word_document: default
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+
+```{r}
+library(ggplot2)
+library(readr)
+library(dplyr)
+library(plyr)
+```
+
+
+```{r}
+nba <- read_csv("nba2017-18.csv")
+```
+
+
+```{r}
+nba = data.frame(nba)
+nba_tr = select(nba, PTS, TRB, MP, Age)
+head(nba_tr)
+```
+
+#Q1
+
+```{r}
+gg = ggplot(nba_tr, aes(x = PTS, y = TRB)) + geom_point() + geom_smooth(method = "lm", se = FALSE) + labs(x = "Points", y = "Rebounds", title = "Rebounds as a function of Points")
+gg
+```
+
+There seems to be strong relationship between rebounds and points. As the line is steadily increasing. 
+
+
+#Q2)
+
+```{r}
+nba_tr$RPM = nba_tr$TRB / nba_tr$MP
+nba_tr$PPM = nba_tr$PTS / nba_tr$MP
+head(nba_tr)
+```
+
+```{r}
+gg = ggplot(nba_tr, aes(x = PTS, y = RPM)) + geom_point() + labs(x = "Points per minute", y = "Rebounds per minute", title = "Rebounds per minute vs Points per minute")
+gg
+```
+
+As we can see the rebounds per minute is almost scattered horizontally with a very slight tendency to increase as points per minute increases.
+
+#Q3
+
+```{r}
+gg = ggplot(nba_tr, aes(x = PTS, y = RPM)) + geom_point() + geom_smooth(method = "lm", se = FALSE) + labs(x = "Points per minute", y = "Rebounds per minute", title = "Rebounds per minute vs of Points per minute")
+gg
+```
+
+As we can see graphically that there is a somewhat weak relationship between them as the line is not completely horizontal but tilts upwards as points per minute increases. Thus the relationship is positive. 
+
+#Q4
+
+```{r}
+gg = ggplot(nba_tr, aes(x = Age, y = MP)) + geom_point()
+gg
+```
+
+```{r}
+gg = ggplot(nba_tr, aes(x = Age, y = MP)) + geom_point() + geom_smooth(method = "loess", se = FALSE)
+gg
+```
+
+```{r}
+nba_4 = ddply(nba_tr, ~Age, summarize,  AMP = mean(MP))
+```
+
+
+```{r}
+gg = ggplot(nba_4, aes(x = Age, y = AMP)) + geom_point() + geom_smooth(method = "loess", se = FALSE)
+gg
+```
+
+As seen we can see that young players get less time on court but as they gain experience they get more time on court. But as they age more their time on court decreases again.
+
+#Q5
+
+```{r}
+gg = ggplot(nba_4, aes(x = Age, y = AMP)) + geom_point() + geom_smooth(method = "lm", se = FALSE)
+gg
+```
+
+This line tells us that as players age, their time on court increases. 
+
+

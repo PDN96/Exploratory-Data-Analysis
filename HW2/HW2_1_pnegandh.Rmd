@@ -1,0 +1,35 @@
+---
+title: "HW2_pnegandh"
+output: word_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library("MASS")
+data(cats)
+str(cats)
+```
+
+```{r}
+head(cats)
+```
+
+```{r}
+counts = table(cats$Bwt)
+barplot(counts, space = 0, col = "black", xlab = "Bodyweight (kg)", ylab = "Number of cats", main = "Cat Weights from Fisher (1947)")
+```
+
+```{r}
+library(ggplot2)
+p<-ggplot(data=cats, aes(x=factor(Bwt))) + geom_histogram(stat="count", width=1, fill="black") + xlab("Bodyweight (kg)") + ylab("Number of cats") + ggtitle("Cat Weights from Fisher (1947)")
+p
+```
+
+Discussion:
+
+This distribution at first glance looks like a trimodal distribution as it has three peaks. However after staring at it for some more time, it started looking like a Beta distribution with some outliers or some error terms added to it. 
+
+However, if we want we can still fit a mixtire of gaussians model to it with the number of gaussians equalling 3 and I am sure it will give good results to predict the proportion of cats equaling a certain weight in a population.

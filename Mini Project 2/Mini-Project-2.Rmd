@@ -1,0 +1,316 @@
+---
+title: "Mini Project 2"
+author: "Shreya Paul, Siddartha Rao, Amit Makashir and  Prashil Negandhi"
+date: "November 4, 2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library("RColorBrewer")
+load("CCES16_Common_OUTPUT_Feb2018_VV.RData")
+```
+
+```{r}
+cces_df <- x[c('commonweight_vv_post' , 'tookpost' , 'gender' , 'educ' , 'race' , 'pid7' , 'CC16_326' , 'CC16_410a' , 'CC16_331_1' , 'CC16_331_2' , 'CC16_331_3' , 'CC16_331_7')]
+```
+
+
+```{r}
+obama <- subset(cces_df, tookpost =='Yes' & CC16_326== 'Barack Obama')
+obama = obama %>%  mutate(Trump_2016 = ifelse(CC16_410a == "Donald Trump (Republican)",1,0))
+
+obama$Trump_2016[is.na(obama$Trump_2016)] <- 0
+
+obama = obama %>%  mutate(quantitative = ifelse(CC16_331_1 == "Yes",1,0) + ifelse(CC16_331_2 == "No",1,0) + ifelse(CC16_331_3 == "Yes",1,0) + ifelse(CC16_331_7 == "No",1,0))
+```
+
+
+```{r}
+
+obama$race = recode(obama$race, Asian ="Other", Mixed="Other",`Native American`="Other",`Middle Eastern`="Other")
+
+obama %>% 
+  group_by(race) %>%
+  summarise(no_rows = length(race))
+```
+
+```{r}
+obama %>% 
+  group_by(race) %>%
+  summarise(no_rows = length(race))
+
+obama %>% 
+  group_by(educ) %>%
+  summarise(no_rows = length(educ))
+```
+
+Recoding the variables "educ" and "party" to "educ_num" and "party_num" 
+```{r}
+obama$party_num=recode(obama$pid7,"Strong Democrat"=1, "Not very strong Democrat"=2,"Lean Democrat"=3,"Independent"=4,"Lean Republican"=5,"Not very strong Republican"=6,"Strong Republican"=7,"Not sure"=8,"skipped"=98,"not asked"=99)
+
+# For NA values, we treating them same as "Not sure"
+obama$party_num[is.na(obama$party_num)] = 8
+
+obama$educ_num=recode(obama$educ,"No HS"=1,"High school graduate"=2,"Some college"=3,"2-year"=4,"4-year"=5,"Post-grad"=6,"skipped"=8,"not asked"=9)
+```
+
+
+### immigaration & gender
+```{r}
+head(obama)
+```
+
+```{r}
+#View(obama)
+ggplot(obama, aes(x = quantitative, y = Trump_2016)) +
+  xlab("Immigration Attitude") + ylab("Voted for Trump in 2016") +
+  labs(color = "Gender", title = "Shift of voters from Obama to Trump wrt Immigration Attitude by Gender") + geom_point()  + geom_jitter(height = 0.2) + facet_wrap(gender ~ ., nrow=1) + geom_smooth(method="lm",aes(weight=commonweight_vv_post))
+
+```
+
+
+```{r}
+
+mod1a=glm(Trump_2016~gender+quantitative,family = binomial,weights =commonweight_vv_post,data=obama)
+summary(mod1a)
+
+mod1b=glm(Trump_2016~gender*quantitative,family = binomial,weights =commonweight_vv_post,data=obama)
+summary(mod1b)
+
+```
+
+```{r}
+anova(mod1a,mod1b,test="Chisq")
+```
+
+Since P-value is not statistically significant, we cannot reject the null hypothesis that simple model is better than the complex model. Therefore we select the simple model in this case without the interaction term. 
+
+```{r}
+mod1=mod1a
+gender.df = expand.grid(gender=c("Male","Female"), quantitative = seq(0, 4, 1))
+gender.int.pred = predict(mod1, type = "response",newdata = gender.df)
+gender.int.pred.df = data.frame(gender.df, mod1.prob = as.vector(gender.int.pred))
+```
+
+```{r}
+ggplot(gender.int.pred.df, aes(x = quantitative, y = mod1.prob,
+group = gender, color = gender)) + geom_line()+labs(x="Immigration Attitude",y="Shift from Obama to Trump",title = "Shift of voters wrt Immigration attitude by Gender") 
+
+```
+
+Explanation - As people become more immigration pro, the probability that they'll vote for Trump after voting for Obama in the previous term decreases. In general, Females are less likely to support Trump in 2016 elections. However, as they become more immigration pro they become equally less likely to support Trump. 
+
+### immigaration & race
+
+```{r}
+
+mod2a=glm(Trump_2016~race+quantitative,family = binomial,weights =commonweight_vv_post,data=obama)
+summary(mod2a)
+mod2b=glm(Trump_2016~race*quantitative,family = binomial,weights =commonweight_vv_post,data=obama)
+summary(mod2b)
+
+
+
+
+ggplot(obama, aes(x = quantitative, y = Trump_2016)) +
+  xlab("Immigration Attitude") + ylab("Voted for Trump in 2016") +
+  labs(color = "race", title = "Shift of voters from Obama to Trump wrt Immigration Attitude by Race") + geom_point()  + geom_jitter(height = 0.2) + facet_wrap(race ~ ., nrow=1) + geom_smooth(method="lm",aes(weight=commonweight_vv_post))
+```
+
+```{r}
+anova(mod2a,mod2b,test="Chisq")
+```
+
+Since P-value is statistically significant (<0.05), we reject the null hypothesis that simple model is better than the complex model and therefore conclude complex model is better than simple. That is, we assume there is an interaction between race and immigration attitude.  
+
+```{r}
+mod2=mod2b
+race.df = expand.grid(race=c("White","Black","Hispanic","Other"), quantitative = seq(0, 4, 1))
+race.int.pred = predict(mod2, type = "response",newdata = race.df)
+race.int.pred.df = data.frame(race.df, mod2.prob = as.vector(race.int.pred))
+```
+
+```{r}
+ggplot(race.int.pred.df, aes(x = quantitative, y = mod2.prob,
+group = race, color = race)) + geom_line()+labs(x="Immigration Attitude",y="Shift from Obama to Trump",title = "Shift of voters wrt Immigration attitude by Race") 
+
+```
+
+### immigaration & party
+```{r}
+mod3a=glm(Trump_2016~as.factor(party_num)+quantitative,family = binomial,weights =commonweight_vv_post,data=obama)
+summary(mod3a)
+mod3b=glm(Trump_2016~as.factor(party_num)*quantitative,family = binomial,weights =commonweight_vv_post,data=obama)
+summary(mod3b)
+
+
+ggplot(obama, aes(x = quantitative, y = Trump_2016)) +
+  xlab("Immigration Attitude") + ylab("Voted for Trump in 2016") +
+  labs(color = "as.factor(party_num)", title = "Shift of voters from Obama to Trump wrt Immigration Attitude by Party Affliation",subtitle = "Party identification has seven levels from 'Strong Democrat' to 'Strong Republican' \nIn Immigration Attitude, 0 denotes the least and 4 denotes the most Pro-immigration attitude") + geom_point()  + geom_jitter(height = 0.2) + facet_wrap(as.factor(party_num) ~ ., nrow=1) + geom_smooth(method="lm",aes(weight=commonweight_vv_post))
+
+```
+
+```{r}
+anova(mod3a,mod3b,test="Chisq")
+```
+
+Since P-value is statistically significant, we reject the null hypothesis that simple model is better than complex model therefore we conclude that complex model is better and we need an interaction between Party identifcation and Immigration attitude.
+. 
+```{r}
+mod3=mod3b
+party.df = expand.grid(party_num=c(1,2,3,4,5,6,7,8), quantitative = seq(0, 4, 1))
+party.int.pred = predict(mod3, type = "response",newdata = party.df)
+party.int.pred.df = data.frame(party.df, mod3.prob = as.vector(party.int.pred))
+
+party.int.pred.df$party=recode(party.int.pred.df$party_num, "1"="Strong Democrat", "2"= "Not very strong Democrat", "3"="Lean Democrat", "4"="Independent", "5"="Lean Republican", "6"="Not very strong Republican", "7"="Strong Republican", "8"="Not sure")
+
+
+```
+
+```{r}
+
+ggplot(party.int.pred.df, aes(x = quantitative, y = mod3.prob,
+group = party, color = party)) + geom_line()+labs(x="Immigration Attitude",y="Shift from Obama to Trump",title = "Shift of voters wrt Immigration attitude by Party") 
+
+```
+
+### immigaration & education
+```{r}
+
+mod4a=glm(Trump_2016~educ_num+quantitative,family = binomial,weights =commonweight_vv_post,data=obama)
+summary(mod4a)
+mod4b=glm(Trump_2016~educ_num*quantitative,family = binomial,weights =commonweight_vv_post,data=obama)
+summary(mod4b)
+
+ggplot(obama, aes(x = quantitative, y = Trump_2016)) +
+  xlab("Immigration Attitude") + ylab("Voted for Trump in 2016") +
+  labs(color = "educ_num", title = "Shift of voters from Obama to Trump wrt Immigration Attitude by Education Level") + geom_point()  + geom_jitter(height = 0.2) + facet_wrap(educ ~ ., nrow=1) + geom_smooth(method="lm",aes(weight=commonweight_vv_post))
+```
+
+
+```{r}
+anova(mod4a,mod4b,test="Chisq")
+```
+
+Since P-value is statistically significant, we can reject the null hypothesis that the simple model is better than the complex model and conclude that interaction term is required between Immigration Attitude and Education. 
+
+```{r}
+mod4=mod4b
+educ.df = expand.grid(educ_num=c(1,2,3,4,5,6), quantitative = seq(0, 4, 1))
+educ.int.pred = predict(mod4, type = "response",newdata = educ.df)
+educ.int.pred.df = data.frame(educ.df, mod4.prob = as.vector(educ.int.pred))
+
+educ.int.pred.df$educ=recode(educ.int.pred.df$educ_num, "1"="No HS", "2"= "High school graduate", "3"="Some college", "4"="2-year", "5"="4-year", "6"="Post- grad")
+
+```
+
+```{r}
+
+ggplot(educ.int.pred.df, aes(x = quantitative, y = mod4.prob,
+group = educ, color = educ)) + geom_line()+labs(x="Immigration Attitude",y="Shift from Obama to Trump",title = "Shift of voters wrt Immigration attitude by Education") 
+
+```
+
+
+## Question 3
+Fit TWO weighted logistic regression models to give the probability of an 2012 Obama voter switching to Trump in 2016: one without immigration attitude as a predictor, and one with immigration attitude as a predictor. Include interactions as necessary. State or display the coeffcients of your models. Display the model probabilities for selected demographic groups. Compare the results of your models. Does including immigration attitudes make a substantive difference? Does it matter more for some demographic groups than others?
+
+```{r}
+obama = rename(obama, "immigration" = "quantitative")
+head(obama)
+```
+
+```{r}
+obama_q3 = obama %>%
+  select(commonweight_vv_post,gender,race,educ_num,party_num,immigration,Trump_2016)
+
+head(obama_q3)
+```
+
+Fit a weighted logistic regression model using the immigration variable
+```{r}
+q3_logit_immigration = glm(Trump_2016 ~ gender + race*immigration + party_num*immigration + educ_num*immigration + immigration , family = binomial, data = obama_q3,weights=commonweight_vv_post)
+
+summary(q3_logit_immigration)
+```
+
+```{r}
+obama_q3_no_immig = obama_q3 %>%
+                    select(-immigration)
+
+q3_logit_without_immigration = glm(Trump_2016 ~ . , family = binomial,
+                         data = obama_q3_no_immig,weights=commonweight_vv_post)
+
+summary(q3_logit_without_immigration)
+```
+
+As we can see, the AIC of the first model (with immigration and interaction) is significantly less than the AIC for the second model (without immigration and iteraction). Thus we can say that having immigration and interaction makes a significant difference in whether people switch to Trump or not.
+
+Predictions for first model i.e with Immigration variable
+```{r}
+q3_logit_model = obama_q3 %>% 
+                        mutate(prob = predict(q3_logit_immigration,.,type='response'))
+
+head(q3_logit_model)
+```
+
+```{r, fig.width=10}
+ggplot(q3_logit_model, aes(x = party_num, y = prob, color = gender)) +
+  xlab("Party Identification") + ylab("Probability of voting for Trump") +
+  labs(color = "Gender", title = "Probability of voting for Trump vs Party Identification (with immigration attitude)", subtitle = "Party identification has seven levels from 'Strong Democrat' to 'Strong Republican'") + geom_point(alpha = 0.1,position = position_jitter(h = 0.1)) + facet_wrap(race ~ ., nrow=1) + geom_smooth(aes(group=gender,weight=commonweight_vv_post), method="lm") + scale_color_viridis_d()
+```
+
+As we can see, coloring by gender doesn't really tell us anything.
+
+Plotting Probability vs Party Identification faceted on Race and colored by immigration. 
+
+```{r,fig.width=10}
+ggplot(q3_logit_model, aes(x = party_num, y = prob, color = factor(immigration))) +
+  xlab("Party Identification") + ylab("Probability of voting for Trump") +
+  labs(color = "Immigration Attitude", title = "Probability of voting for Trump vs Party Identifcation (with Immigration Attitude)", subtitle = "Party identification has seven levels from 'Strong Democrat' to 'Strong Republican' \nIn Immigration Attitude, 0 denotes the least and 4 denotes the most Pro-immigration attitude") + geom_point(alpha = 0.1,position = position_jitter(h = 0.1)) + facet_wrap(race ~ ., nrow=1) + geom_smooth(aes(group=immigration,weight=commonweight_vv_post), method="lm") + scale_color_viridis_d()
+
+```
+
+As we can see there is general trend of people with anti-immigration attitudes to vote for Trump in all Party Identifications. Thus we can say graphically also that including Immigration Attitude makes a difference in predictions.
+
+Plotting Probability vs Education faceted on Race and colored by gender.
+
+```{r,fig.width=10}
+ggplot(q3_logit_model, aes(x = educ_num, y = prob, color = factor(immigration))) +
+  xlab("Education") + ylab("Probability of voting for Trump") +
+  labs(color = "Immigration Attitude", title = "Probability of voting for Trump vs Education Level (with immigration attitude)", subtitle = "Education has 6 levels (from No HS to Post-grad) \nIn Immigration Attitude, 0 denotes the least and 4 denotes the most Pro-immigration attitude") + geom_point(alpha = 0.1,position = position_jitter(h = 0.1)) + facet_wrap(race ~ ., nrow=1) + geom_smooth(aes(group=immigration,weight=commonweight_vv_post), method="lm") + scale_color_viridis_d()
+```
+
+As we can see, plotting the education levels on the x axis doesn't really tell us a lot. There is only a very weak correlation between education, immigration and voting for Trump.
+
+
+Predictions for second model i.e without Immigration variable
+
+```{r}
+obama_q3_without_label_immig = obama_q3_no_immig %>% 
+                          mutate(prob = predict(q3_logit_without_immigration,.,type='response'))
+
+head(obama_q3_without_label_immig)
+```
+
+```{r,fig.width=10}
+ggplot(obama_q3_without_label_immig, aes(x = party_num, y = prob,color = gender)) +
+  xlab("Party Identification") + ylab("Probability of voting for Trump") +
+  labs(color = "Gender", title = "Probability vs Immigration attitude for all each level in Party Identification (without immigration attitude)", subtitle = "The x-axis denotes Party Identification with the left-most being 'Strong Democrat' and right-most being 'Strong Republican'") + geom_point(alpha = 0.1,position = position_jitter(h = 0.1)) + facet_wrap(race ~ ., nrow=1) + geom_smooth(aes(weight=commonweight_vv_post), method="lm")
+```
+
+The probabilities are well distributed in the plot unlike where the immigration status was involved in the prediction. This means, that the immigration attitude did have a significant effect on the probabilities. 
+
+
+Comparing the residuals for both the models
+```{r}
+# ggplot(q3_logit_without_immigration,aes(x=.fitted,y=.resid)) + geom_point() + geom_smooth(se=FALSE)
+```
+
+Comparing the two models using ANOVA
+```{r}
+anova(q3_logit_without_immigration,q3_logit_immigration,test="Chisq")
+```
+

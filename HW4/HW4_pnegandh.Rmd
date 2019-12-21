@@ -1,0 +1,87 @@
+---
+title: "PS5"
+author: "Prashil Negandhi"
+date: "8 October 2019"
+output: word_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(readr)
+library(tidyverse)
+library(dplyr)
+```
+
+
+```{r}
+t_ratings = read_tsv("title.ratings.tsv/data.tsv", na = "\\N", quote = "")
+head(t_ratings)
+```
+
+```{r}
+t_basics = read_tsv("title.basics.tsv/data.tsv", na = "\\N", quote = "")
+head(t_basics)
+```
+
+```{r}
+data = merge(t_ratings, t_basics, by="tconst")
+head(data)
+```
+
+```{r}
+movie_data = data[which(data$titleType == "movie"), ] %>% 
+  select(startYear,runtimeMinutes,numVotes,averageRating)
+nrow(movie_data)
+```
+
+```{r}
+head(movie_data)
+```
+
+```{r}
+lm(averageRating ~ startYear + runtimeMinutes, data = movie_data) %>% summary()
+```
+
+
+```{r}
+transformed_data = movie_data %>% 
+  mutate(startYear = as.integer(startYear)) %>% 
+  mutate(startYear = startYear-min(startYear,na.rm = TRUE)) %>% 
+  mutate_at(vars(-averageRating), funs(log(.))) %>%
+  drop_na() %>% 
+  filter_all(all_vars(is.finite(.)))
+```
+
+```{r}
+head(transformed_data)
+```
+
+
+```{r}
+lm(averageRating~ startYear+runtimeMinutes, data = transformed_data) %>% summary()
+```
+
+```{r}
+transformed_data %>% summary()
+```
+
+```{r}
+outliers  =  boxplot(transformed_data$runtimeMinutes, plot=FALSE)$out
+without_outliers = transformed_data[-which(transformed_data$runtimeMinutes %in% outliers),]
+without_outliers %>% summary()
+```
+
+```{r}
+lm(averageRating~ startYear+runtimeMinutes, data = without_outliers) %>% summary()
+```
+
+
+```{r}
+lm(averageRating ~ startYear + runtimeMinutes, data = without_outliers, weights = without_outliers$numVotes) %>% summary()
+```
+
+
+

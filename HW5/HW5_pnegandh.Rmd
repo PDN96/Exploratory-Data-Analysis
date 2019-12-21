@@ -1,0 +1,131 @@
+---
+title: "HW5_pnegandh"
+author: "Prashil Negandhi"
+date: "30 October 2019"
+output: word_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(NHANES)
+library(dplyr)
+library(tidyr)
+```
+
+```{r}
+nhanes = NHANES
+head(nhanes)
+```
+
+```{r}
+nhanes_raw = NHANESraw
+head(nhanes_raw)
+```
+
+```{r}
+nhanes = nhanes %>% select(ID, Diabetes, Age) %>% drop_na() %>% mutate(Diabetes = ifelse(Diabetes == "Yes", 1, 0))
+head(nhanes)
+```
+
+```{r}
+nhanes_raw = nhanes_raw %>% select(ID, Diabetes, Age, WTINT2YR) %>% drop_na() %>% mutate(Diabetes = ifelse(Diabetes == "Yes", 1, 0))
+head(nhanes_raw)
+```
+
+#Q1.a)
+
+```{r}
+with_d = sum(nhanes$Diabetes == 1)
+total = nrow(nhanes)
+
+with_d/total
+```
+
+As we can see 7.7% of the people have diabetes.
+
+
+#Q1.b)
+
+```{r}
+with_d_2 = sum(nhanes_raw$Diabetes == 1)
+total_2 = nrow(nhanes_raw)
+
+with_d_2/total_2
+```
+
+As we can see 8.7% of the people have diabetes without using weights.
+
+#Q1.c)
+
+```{r}
+with_d_3 = sum(nhanes_raw$Diabetes * nhanes_raw$WTINT2YR)
+total_3 = sum(nhanes_raw$WTINT2YR)
+
+with_d_3/total_3
+```
+
+As we can see 7.9% of the people have diabetes if we use weights.
+
+The number for 1.a) and 1.c) are really close. This is because using weights makes the proportion almost same. However the proportion for 1.b) is 1% away.
+
+
+#Q2.a)
+
+```{r}
+mod_1 <- glm(Diabetes ~ Age, data=nhanes, family='binomial')
+summary(mod_1)
+```
+
+#Q2.b)
+
+```{r}
+mod_2 <- glm(Diabetes ~ Age, data = nhanes_raw, family = 'quasibinomial', weights = WTINT2YR)
+summary(mod_2)
+```
+
+As we can see the deviance residuals are much lower for the second model. The intercepts are higher for the second model. 
+Moreover looking at the t value and the error we can say that the second model doesn't perform that well.
+
+```{r}
+nhanes_raw["Weighted"] = nhanes_raw$Diabetes * nhanes_raw$WTINT2YR
+```
+
+```{r}
+head(nhanes_raw)
+```
+
+```{r}
+library(plyr)
+library(ggplot2)
+```
+
+```{r}
+plot_data = ddply(nhanes_raw, .(Age), summarize,  Proportion = sum(Weighted)/sum(WTINT2YR))
+head(plot_data)
+```
+
+```{r}
+sum(plot_data$Weighted_Mean)
+```
+
+
+```{r}
+ggplot(plot_data, aes(Age, Proportion)) + geom_point()
+```
+
+```{r}
+newdata = data.frame("Age" = seq(1:80))
+plot_data["Predicted"] = predict(mod_1, newdata, type = "response")
+```
+
+```{r}
+ggplot(plot_data, aes(Age)) + geom_point(aes(y = Proportion)) + geom_smooth(aes(y = Predicted))
+```
+
+Looking at the graphs we can say that the model performs much better for predicting diabetes proportion for lower age groups. However, as we go to higher ages the model starts performing worse. This might be because we don't have enough people in those age groups. 
+
+
+

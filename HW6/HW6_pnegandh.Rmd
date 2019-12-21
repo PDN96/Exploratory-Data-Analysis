@@ -1,0 +1,95 @@
+---
+title: "HW6_pnegandh"
+author: "Prashil Negandhi"
+date: "1 December 2019"
+output: word_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+#Importing Libraries
+
+```{r}
+library(tidyverse)
+library(maps)
+library(openintro)
+library(ggthemes)
+```
+
+
+```{r}
+all_counties = map_data("county")
+head(all_counties)
+```
+
+```{r}
+election = read.table("county_data.txt", header = TRUE)
+head(election)
+```
+
+
+#Cleaning Data
+
+```{r}
+all_counties = all_counties %>% mutate(region = str_replace_all(subregion, " ", ""))
+head(all_counties)
+```
+
+```{r}
+election = drop_na(election)
+election$region = tolower(election$name)
+election = election %>% mutate(region = str_replace_all(region, 
+    " county| parish|\\.| borough|'| ", ""))
+head(election)
+```
+
+
+```{r}
+setdiff(all_counties$region, election$region)
+setdiff(election$region, all_counties$region)
+```
+
+```{r}
+all_counties_election = inner_join(all_counties, election, by = "region")
+```
+
+#2016 US Presedential Election Winners by state
+
+```{r}
+ggplot(all_counties_election, aes(long, lat, group = group, fill = partywinner16)) +
+  geom_polygon(color = "gray90", size = 0.25) +
+  theme_map() +
+  coord_map(projection = "lambert", lat0 = 30, lat1 = 40) +
+  scale_fill_manual(values = c("dodgerblue3", "indianred3")) +
+  guides(fill=guide_legend(title="Election Winner")) +
+  ggtitle("US Presedential Elections 2016")
+```
+
+
+#States that flipped
+
+This plot shows the counties that changed their votes from the 2012 presidential election.
+
+```{r}
+ggplot(all_counties_election, aes(long, lat, group = group, fill = flipped)) +
+  geom_polygon(color = "gray90", size = 0.25) +
+  theme_map() +
+  coord_map(projection = "lambert", lat0 = 30, lat1 = 40) +
+  scale_fill_manual(values = c("dodgerblue3", "indianred3")) +
+  guides(fill=guide_legend(title="Flipped")) +
+  ggtitle("US Presedential Election - Counties that Flipped", subtitle = "Counties where the majority vote getting party in 2016 is different from that in 2012")
+```
+
+
+As we can see from the plot, the majority of the counties in 2016 Presidential elections  didn't switch their party from the one they voted for in 2012 Presedential elections.
+
+
+
+
+
+
+
+
+

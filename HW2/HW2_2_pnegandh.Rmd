@@ -1,0 +1,96 @@
+---
+title: "HW2_2_pnegandh"
+output:
+  word_document: default
+  pdf_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+```{r}
+library(readr)
+library(dplyr)
+library(reshape)
+library(ggplot2)
+```
+
+```{r}
+anes_full= read_csv("anes_pilot_2016.csv")
+anes_full = data.frame(anes_full)
+```
+Selecting the required columns
+
+```{r}
+anes_tr = anes_full %>% 
+              select(version, caseid, fttrump, fthrc, ftsanders, ftrubio, immig_numb)
+head(anes_tr)
+```
+
+Processing the data to remove unwanted values.
+
+```{r}
+anes_final = anes_tr[anes_tr$fttrump <= 100,]
+anes_final = anes_final[anes_final$fthrc <= 100,]
+anes_final = anes_final[anes_final$ftsanders <= 100,]
+anes_final = anes_final[anes_final$ftrubio <= 100,]
+```
+
+```{r}
+summary(anes_final)
+```
+
+```{r}
+head(anes_final)
+```
+
+
+```{r}
+df = melt(anes_final[,c(2:7)],id=c("caseid","immig_numb"))
+colnames(df) = c("caseid","immig_numb","candidate","feeling")
+df$candidate = ifelse(df$candidate=="fttrump","Donald Trump",ifelse(df$candidate=="fthrc","Hillary Clinton",ifelse(df$candidate=="ftsanders","Bernie Sanders","Marco Rubio")))
+head(df)
+```
+
+```{r}
+
+ggplot(df, aes (feeling)) +
+  geom_density(color="darkblue", fill="lightblue") +
+  facet_wrap(~candidate) +
+  ggtitle("Feeling Thermometer Measurements for Four Presidential Candidates (0-Very Cold and 100-Very Warm)") + 
+  labs(x="Feeling Thermometer Measurements",y="Density")
+```
+
+Discussion:
+
+In the above graphs, the density distributions of feeling thermoeter scores for 4 Presidential candidates, namely Trump, Clinton, Sanders and Rubio, have been ploted.
+
+Analyzing the Sanders density we can see that it looks like a trimodal distribution as it has three peaks. Moreover we can say that overall Bernie Sanders experiences not many people with extreme feelings towards him. This is because the density plot is almost flat with very small peaks.
+
+Analyzing the Trump and Clinton density plots we can see that the graph peaks at around 0 (very cold). This shows that they both have strong opposers. However they don't have that many strong supporters.
+
+Analyzing the Rubio density plot we can see that it looks like a bimodal distribution as it has two peaks. They are centered at around 0 (very cold) and 50 (neutral) with the one at 50 being a little bigger. This shows that although Rubio has some strong opposers, they are outweighed by the people who are neutral towards him. He also doesn't have many 100 (very warm) feeling scores.
+
+
+## Question 2
+
+```{r}
+df_2 = df %>% group_by(immig_numb,candidate) %>% summarise(Mean = mean(feeling))
+df_2$immig_numb = as.factor(df_2$immig_numb)
+head(df_2)
+```
+
+
+
+```{r}
+ggplot(df_2,aes(x=immig_numb,y=Mean, color = immig_numb)) + geom_point(size=3.5) +facet_wrap(.~candidate,ncol=2) +labs(x="Attitude towards Immigration",y="Mean Feeling Thermometer") + ggtitle("Mean Feeling for Presidential candidates based on Immigration") + scale_x_discrete(breaks = c(1, 2, 3, 4, 5, 6, 7), labels=c("Increased a lot","Increased a moderate amount","Increased a little","Kept the same","Decreased a little","Decreased a moderate amount","Decreased a lot")) + guides(colour=FALSE) + coord_flip()
+
+```
+
+Discussion:
+
+The above plotted graph shows the mean feeling thermometer scores for each level of immigration attitude for each of the four Presedential candidates, namely Sanders, Trump, Clinton, and Rubio. 
+
+Analyzing these plots we can see that Sanders and Clinton have very high feeling scores for people who have an attitude towards incresing immigration. Whereas, Trump has very high feeling scores for people who believe immigration should be decreased a lot. For Rubio, people with anti-immigrant views have a moderate feeling scores for him and the people with pro-immigrant views have below average feeling scores for him. But no extremes are noted in Rubio's plot. 

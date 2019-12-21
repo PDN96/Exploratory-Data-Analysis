@@ -1,0 +1,50 @@
+---
+title: "PS1"
+output:
+  word_document: default
+  html_document: default
+  pdf_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+#Importing libraries
+
+```{r}
+library(ggplot2)
+library(readr)
+library(stringr)
+```
+
+#Reading the Data from CSV files.
+
+```{r}
+nba <- read_csv("nba2017-18.csv")
+pacers = read_csv("pacers2017-18.csv")
+```
+
+#Converting player names to characters
+
+```{r}
+pacers = data.frame(pacers)
+#class(pacers$Player)
+pacers$Player = as.character(pacers$Player)
+pacers$Player = str_split_fixed(pacers$Player, "\\\\", 2)[,1]
+```
+
+#Converting player height to inches
+
+```{r}
+pacers$Height = as.numeric(substring(pacers$Ht,1,1)) * 12 +  as.numeric(substring(pacers$Ht,3,nchar(pacers$Ht)))
+```
+
+#Plotting the graph
+
+```{r}
+pacers$Player = factor(pacers$Player, levels = pacers$Player[order(pacers$Pos,pacers$Height)])
+gg = ggplot(pacers, aes(x = Player, y = Height, fill = Pos)) + geom_bar(stat="identity") + ylab("Height (in inches)") + xlab("Player Name") + ggtitle("Heights of players in Pacers (2017-18)") + coord_flip()
+gg
+```
+

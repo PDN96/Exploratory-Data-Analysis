@@ -1,0 +1,444 @@
+---
+title: "Mini Project"
+author: "Archish Ramesh Babu"
+date: "9/29/2019"
+output:
+  word_document: default
+  html_document:
+    df_print: paged
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+```{r}
+library(gapminder)
+library(tidyverse)
+options(scipen=999)
+```
+
+
+
+```{r}
+summary(gapminder)
+```
+
+
+
+
+```{r}
+setwd('D:/IU/Sem 3/EDA/HW/Mini Project')
+#setwd('C:/Users/Prashil/Desktop/EDA/Mini Project 1')
+income_per_person <- read.csv("income_per_person_gdppercapita_ppp_inflation_adjusted.csv")
+life_expectancy <- read.csv('life_expectancy_years.csv')
+population <- read.csv('population_total.csv')
+
+```
+
+
+
+```{r}
+income_per_person <- income_per_person %>% gather(year,income_per_person,-country)
+life_expectancy <- life_expectancy %>% gather(year,life_expectancy,-country)
+population <- population %>% gather(year,population,-country)
+
+income_per_person$year <- as.numeric(gsub("[a-zA-Z ]", "", income_per_person$year))
+life_expectancy$year <- as.numeric(gsub("[a-zA-Z ]", "", life_expectancy$year))
+population$year <- as.numeric(gsub("[a-zA-Z ]", "", population$year))
+
+
+```
+
+
+
+```{r}
+
+data <- merge(income_per_person, life_expectancy, by = c("country","year"))
+
+data <- merge(data, population, by = c("country","year"))
+
+data <- merge(data, gapminder[,c('country','continent')], by = c("country"))
+
+data=unique(data)
+data <- data[data$continent != 'Oceania',]
+data <- data[data$year > 1944,]
+```
+
+
+
+```{r}
+summary(data)
+```
+
+
+#### 1. GDP and life expectancy in 2018: How does life expectancy vary with GDP per capita in 2018? Can the trends be well-described by a simple model such as a linear model, or is a more complicated model required? Is the pattern the same or different for every continent? If some continents are different, which ones, and how is the relationship different in those continents?
+
+
+```{r}
+data_2018 <- data[data$year == 2018,]
+```
+
+
+```{r}
+gg = ggplot(data_2018, aes(x=income_per_person, y= life_expectancy)) +  geom_point(alpha = 0.3)  + facet_wrap(~continent, scales = "free")
+
+gg + labs(title="Life expectancy (in years) vs GDP per capita in 2018") + xlab("GDP per Capita") + ylab("Life Expectancy in years") + geom_smooth(method="loess",se = TRUE)  
+```
+
+
+
+```{r}
+gg = ggplot(data_2018, aes(x=income_per_person, y= life_expectancy)) +  geom_point(alpha = 0.3) + scale_x_log10() + facet_wrap(~continent, scales = "free")
+gg + labs(title="Life expectancy (in years) vs GDP per capita in 2018") + xlab("Logged GDP per Capita") + ylab("Life Expectancy in years") + geom_smooth(method="loess",se = TRUE)
+```
+
+At a overall level we can observe that life expectancy increases with increase in GDP. The GDP values are very skewed so lets use a log transformation to improve the spread. Looking at the log value of GDP Vs the life expectancy, For Africa and Asia a linear line is able to fit the data as well as a complex model like loess. For the Americas with the exception of the one country(one with the lowest GDP per capita) a linear relation is able to explain the data as well as a complex model.
+
+The relation between GDP per capita and life expectancy follows a S-Shaped curve in
+Europe. For all continents except Europe, a linear line can fit the data quite similar to loess. Loess is a non-parametric approach that fits a polynomial through the data, it is an improvement over linear regression that fits only a straight line.
+
+
+
+```{r}
+ggplot(data_2018, aes(x = income_per_person, y = life_expectancy, color = continent)) + geom_point(alpha = 0.3) + scale_x_log10() + geom_smooth(method = "lm", se = FALSE) + labs(title="Life expectancy (in years) vs GDP per capita in 2018 as a linear function") + xlab("GDP per Capita") + ylab("Life Expectancy in years")
+
+```
+
+
+
+The pattern in each of the continent is again quite similar with all of them showing an increasing trend, that is as the income per capita increases the life expectancy also increases. Based on the below graph we can see that for similar GDP per capita, Africa has the lowest life expectancy which is followed by Asia. the Americas and Europe have
+higher life expectancies. 
+
+
+
+#### Life expectancy over time by continent: How has average life expectancy changed since World War 2 in each continent? Have some continents caught up (at least partially) to others? If so, is this just because of some countries in the continent, or is it more general? Have the changes been linear, or has it been faster/slower in some periods for some continents? What might explain periods of faster/slower change?
+
+
+```{r}
+data_NA_removed <- data[!is.na(data$population),]
+
+data_new<-data_NA_removed %>% group_by(year,continent) %>% summarise(mean_life_expectancy=weighted.mean(life_expectancy,population))
+head(data_new)
+
+```
+```{r}
+ggplot(data_new, aes(x = year, y = mean_life_expectancy, color = continent)) + geom_point() + geom_line() + geom_smooth(method = "loess", se = FALSE) + labs(title="Average Life expectancy (in years) vs Time") + xlab("Time") + ylab("Average Life expectancy (in years)")
+```
+
+
+```{r}
+ggplot(data_new, aes(x = year, y = mean_life_expectancy, color = continent)) + geom_smooth(method = "loess", se = FALSE) + labs(title="Average Life expectancy (in years) vs Time") + xlab("Time") + ylab("Average Life expectancy (in years)")
+
+```
+
+
+From the above image we can see that as the years progress the average life
+expectancy has improved for all continents. Europe has had the highest life expectancy
+followed by Americas, Asia and Africa. Over time the difference between the average
+life expectancy has decreased between the continents, this is especially true for Asia
+and Europe/Americas.
+
+Europe and Americas both have higher life expectancies compared to Asia and Africa.
+The increase in life expectancies for Europe and Americas has been linear. For Asia
+there was a steep increase from 1945 till the 1980's then the climb was less steep but
+still linear. Africa started to grow linearly, then had a stagnation in the 1990's and is
+now showing an exponential rise.
+Now, let's look at each continent in more detail. Since there are a lot of counties within
+each continent we have selected the top 5 countries based on overall population and
+grouped the remaining counties into the other bucket. 
+
+
+```{r}
+continent_deepdive <- function(data,continent_name) 
+  {
+    data_NA_removed <- data[!is.na(data$population),]
+    data_country <- data_NA_removed[data_NA_removed$continent==continent_name,]
+    country_pop <- data_country %>% group_by(country) %>% summarise(population=mean(population))
+    country_pop <- country_pop[with(country_pop,order(-population)),]
+    
+    country_pop_top <- country_pop[0:5,]
+    country_pop_top$new_country <- country_pop_top$country
+    
+    
+    country_pop_bottom <- country_pop[6:nrow(country_pop),]
+    country_pop_bottom$new_country <- 'Others'
+    
+    country_with_others <- rbind(country_pop_top,country_pop_bottom)
+    
+    country_with_others <- unique(country_with_others[,c('country','new_country')])
+    
+    
+    data_country_merged <- merge(data_country, country_with_others, by = c("country"))
+    
+    data_country_merged_vf<-data_country_merged %>% group_by(year,new_country) %>%  summarise(mean_life_expectancy=weighted.mean(life_expectancy,population))
+    
+    data_country_merged_vf
+
+}
+
+```
+
+
+
+```{r}
+
+data_Asia<-continent_deepdive(data,"Asia")
+
+data_Asia$Country <- data_Asia$new_country
+ggplot(data_Asia, aes(x = year, y = mean_life_expectancy, color = Country))+ geom_point() + geom_line() + labs(title="Average Life expectancy (in years) vs Time for Asia") + xlab("Time") + ylab("Average Life expectancy (in years)")
+
+```
+
+```{r}
+ggplot(data_Asia, aes(x = year, y = mean_life_expectancy, color = Country))+ geom_smooth(method = "loess", se = FALSE)+ labs(title="Smooth fit between Average Life expectancy (in years) vs Time for Asia") + xlab("Time") + ylab("Average Life expectancy (in years)")
+```
+
+
+
+```{r}
+
+data_Africa<-continent_deepdive(data,"Africa")
+data_Africa$Country <- data_Africa$new_country
+ggplot(data_Africa, aes(x = year, y = mean_life_expectancy, color = Country))+ geom_point()+ geom_line() + labs(title="Average Life expectancy (in years) vs Time for Africa") + xlab("Time") + ylab("Average Life expectancy (in years)") 
+
+```
+
+```{r}
+ggplot(data_Africa, aes(x = year, y = mean_life_expectancy, color = Country)) + geom_smooth(method = "loess", se = FALSE) + labs(title="Smooth fit between Average Life expectancy (in years) vs Time for Africa") + xlab("Time") + ylab("Average Life expectancy (in years)")
+
+```
+
+
+```{r}
+
+data_Europe<-continent_deepdive(data,"Europe")
+data_Europe$Country <- data_Europe$new_country
+
+ggplot(data_Europe, aes(x = year, y = mean_life_expectancy, color = Country))+ geom_point() + geom_line() + labs(title="Average Life expectancy (in years) vs Time for Europe") + xlab("Time") + ylab("Average Life expectancy (in years)") 
+
+```
+
+```{r}
+ggplot(data_Europe, aes(x = year, y = mean_life_expectancy, color = Country)) + geom_smooth(method = "loess", se = FALSE) + labs(title="Smooth fit between Average Life expectancy (in years) vs Time for Europe") + xlab("Time") + ylab("Average Life expectancy (in years)")
+```
+
+
+
+```{r}
+
+data_America<-continent_deepdive(data,"Americas")
+data_America$Country <- data_America$new_country
+
+ggplot(data_America, aes(x = year, y = mean_life_expectancy, color = Country))+ geom_point()   + geom_line()  + labs(title="Average Life expectancy (in years) vs Time for Americas") + xlab("Time") + ylab("Average Life expectancy (in years)")
+
+```
+
+```{r}
+ggplot(data_America, aes(x = year, y = mean_life_expectancy, color = new_country))+geom_smooth(method = "loess", se = FALSE) + labs(title="Smooth fit between Average Life expectancy (in years) vs Time for Americas") + xlab("Time") + ylab("Average Life expectancy (in years)")
+```
+
+
+
+The growth for all the countries within Europe has been quite steady, Turkey had a very
+low Life expectancy after the world war 2 but had a steep linear increase and has
+caught up to the rest of Europe now . In Americas the United States leads all other
+countries in terms of life expectancy. The growth in Africa is a little bit more complex,
+Ethiopia has shown exponential increase, Egypt grew linearly until the 2000's and has 
+plateaued since then. The flat portion observed in Africa in the 1990's is largely due to
+Nigeria, Congo and other countries. 
+
+
+#Q3 Changes in the relationship between GDP and life expectancy over time: How has the relationship between GDP and life expectancy changed in each continent since World War 2? Can changes in life expectancy be entirely explained by changes in GDP per capita? Does it look like there's a time effect on life expectancy in addition to a GDP effect? Has there been convergence" in the sense that perhaps GDP and/or continent don't matter as much as they used to? Are there exceptions to the general patterns?
+
+```{r}
+data_NA_removed <- data[!is.na(data$population),]
+head(data_NA_removed)
+```
+
+```{r}
+cont_group <- data_NA_removed %>% group_by(continent, year) %>% summarise(mean_life_expectancy=weighted.mean(life_expectancy,population), mean_gdp=weighted.mean(income_per_person,population))
+head(cont_group)
+```
+
+```{r}
+ggplot(cont_group, aes(x = mean_gdp, y = mean_life_expectancy, color = continent)) + geom_point() + geom_smooth(method = "loess", se = FALSE) + labs(title = "Life Expectancy V/S GDP per Capita") + xlab("Weighted mean GDP per Capita(Logged)") + ylab("Life Expectancy (in years)") + scale_x_log10()
+```
+
+
+```{r}
+ggplot(cont_group, aes(x = year, y = mean_life_expectancy, size = mean_gdp, color = continent)) + geom_point(alpha = 0.3) + labs(title = "Life Expectancy V/S Year with GDP") + xlab("Year") + ylab("Life Expectancy (in years)") 
+```
+
+```{r}
+ggplot(cont_group, aes(x = year, y = mean_life_expectancy, size = mean_gdp)) + geom_point(alpha = 0.2) + facet_wrap(~continent)
+
+```
+
+```{r}
+plot(cont_group)
+```
+
+```{r}
+continent_deepdive_q3 <- function(data,continent_name) 
+  {
+    data_NA_removed <- data[!is.na(data$population),]
+    data_country <- data_NA_removed[data_NA_removed$continent==continent_name,]
+    country_pop <- data_country %>% group_by(country) %>% summarise(population=mean(population))
+    country_pop <- country_pop[with(country_pop,order(-population)),]
+    
+    country_pop_top <- country_pop[0:5,]
+    country_pop_top$new_country <- country_pop_top$country
+    
+    
+    country_pop_bottom <- country_pop[6:nrow(country_pop),]
+    country_pop_bottom$new_country <- 'Others'
+    
+    country_with_others <- rbind(country_pop_top,country_pop_bottom)
+    
+    country_with_others <- unique(country_with_others[,c('country','new_country')])
+    
+    
+    data_country_merged <- merge(data_country, country_with_others, by = c("country"))
+    data_country_merged_vf<-data_country_merged %>% group_by(year,new_country) %>%  summarise(mean_life_expectancy=weighted.mean(life_expectancy,population), mean_gdp=weighted.mean(income_per_person,population))
+
+    data_country_merged_vf
+
+}
+```
+
+```{r}
+q3_asia = continent_deepdive_q3(data, "Asia")
+head(q3_asia)
+```
+
+```{r}
+ggplot(q3_asia, aes(x = mean_gdp, y = mean_life_expectancy)) + geom_point() + geom_smooth(method = "loess", se = FALSE) + facet_wrap(~new_country) + scale_x_log10()
+```
+
+
+```{r}
+ggplot(q3_asia, aes(x = year, y = mean_life_expectancy, size = mean_gdp)) + geom_point(alpha = 0.2) + facet_wrap(~new_country) 
+
+```
+
+
+```{r}
+q3_america = continent_deepdive_q3(data, "Americas")
+head(q3_america)
+```
+
+```{r}
+ggplot(q3_america, aes(x = mean_gdp, y = mean_life_expectancy)) + geom_point() + geom_smooth(method = "loess", se = FALSE) + facet_wrap(~new_country) + scale_x_log10()
+```
+
+
+```{r}
+ggplot(q3_america, aes(x = year, y = mean_life_expectancy, size = mean_gdp)) + geom_point(alpha = 0.2) + facet_wrap(~new_country) 
+```
+
+
+```{r}
+q3_africa = continent_deepdive_q3(data, "Africa")
+head(q3_africa)
+```
+
+```{r}
+ggplot(q3_africa, aes(x = mean_gdp, y = mean_life_expectancy)) + geom_point() + geom_smooth(method = "loess", se = FALSE) + facet_wrap(~new_country) + scale_x_log10()
+```
+
+```{r}
+ggplot(q3_africa, aes(x = year, y = mean_life_expectancy, size = mean_gdp)) + geom_point(alpha = 0.2) + facet_wrap(~new_country)
+```
+
+
+```{r}
+q3_europe = continent_deepdive_q3(data, "Europe")
+head(q3_europe)
+```
+
+```{r}
+ggplot(q3_europe, aes(x = mean_gdp, y = mean_life_expectancy)) + geom_point() + geom_smooth(method = "loess", se = FALSE) + facet_wrap(~new_country) + scale_x_log10()
+```
+
+```{r}
+ggplot(q3_europe, aes(x = year, y = mean_life_expectancy, size = mean_gdp)) + geom_point(alpha = 0.2) + facet_wrap(~new_country)
+
+```
+
+```{r}
+data_NA_removed <- data[!is.na(data$population),]
+head(data_NA_removed)
+```
+
+```{r}
+cont_group <- data_NA_removed %>% group_by(continent, year) %>% summarise(mean_life_expectancy=weighted.mean(life_expectancy,population), mean_gdp=weighted.mean(income_per_person,population))
+head(cont_group)
+```
+
+```{r}
+ggplot(cont_group, aes(x = mean_gdp, y = mean_life_expectancy, color = continent)) + geom_point() + geom_smooth(method = "loess", se = FALSE) + labs(title = "Life Expectancy V/S GDP per Capita") + xlab("Weighted mean GDP per Capita(Logged)") + ylab("Life Expectancy (in years)") + scale_x_log10()
+```
+
+
+```{r}
+ggplot(cont_group, aes(x = year, y = mean_life_expectancy, size = mean_gdp, color = continent)) + geom_point(alpha = 0.3) + labs(title = "Life Expectancy V/S Year with GDP") + xlab("Year") + ylab("Life Expectancy (in years)") 
+```
+
+```{r}
+ggplot(cont_group, aes(x = year, y = mean_life_expectancy, size = mean_gdp)) + geom_point(alpha = 0.2) + facet_wrap(~continent)
+
+```
+
+```{r}
+plot(cont_group)
+```
+
+```{r}
+continent_deepdive_q3 <- function(data,continent_name) 
+  {
+    data_NA_removed <- data[!is.na(data$population),]
+    data_country <- data_NA_removed[data_NA_removed$continent==continent_name,]
+    country_pop <- data_country %>% group_by(country) %>% summarise(population=mean(population))
+    country_pop <- country_pop[with(country_pop,order(-population)),]
+    
+    country_pop_top <- country_pop[0:5,]
+    country_pop_top$new_country <- country_pop_top$country
+    
+    
+    country_pop_bottom <- country_pop[6:nrow(country_pop),]
+    country_pop_bottom$new_country <- 'Others'
+    
+    country_with_others <- rbind(country_pop_top,country_pop_bottom)
+    
+    country_with_others <- unique(country_with_others[,c('country','new_country')])
+    
+    
+    data_country_merged <- merge(data_country, country_with_others, by = c("country"))
+    data_country_merged_vf<-data_country_merged %>% group_by(year,new_country) %>%  summarise(mean_life_expectancy=weighted.mean(life_expectancy,population), mean_gdp=weighted.mean(income_per_person,population))
+
+    data_country_merged_vf
+
+}
+```
+
+```{r}
+q3_asia = continent_deepdive_q3(data, "Asia")
+head(q3_asia)
+```
+
+
+```{r}
+data_q3 = data %>% mutate(YearBins = cut(year,5,dig.lab = 4))
+head(data_q3)
+```
+
+```{r}
+ggplot(data_q3,aes(y = life_expectancy,x = income_per_person,color = continent))+
+  geom_smooth(method = "lm", se = FALSE)+facet_grid(rows = "YearBins")
+```
+
+
+
+
